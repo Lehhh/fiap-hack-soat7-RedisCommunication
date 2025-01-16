@@ -1,0 +1,10 @@
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      timeout: 5000
+      port: 6379
+      ssl:
+        enabled: false
+server:
+  port: 8080
