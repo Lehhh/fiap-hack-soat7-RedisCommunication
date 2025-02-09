@@ -3,7 +3,7 @@ spring:
     redis:
       host: ${REDIS_HOST}
       timeout: 5000
-      port: 6379
+      port: ${REDIS_PORT}
       ssl:
         enabled: false
 server:
