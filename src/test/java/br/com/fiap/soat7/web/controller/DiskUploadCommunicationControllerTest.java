@@ -5,6 +5,7 @@ import br.com.fiap.soat7.domain.dto.InfoVideo;
 import br.com.fiap.soat7.domain.enums.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -22,6 +23,47 @@ class DiskUploadCommunicationControllerTest {
 
     @InjectMocks
     private DiskUploadCommunicationController diskUploadCommunicationController;
+
+    private InfoVideo infoVideo;
+    @BeforeEach
+    void setUp() {
+        infoVideo = new InfoVideo();
+        infoVideo.setStage(Stage.UPLOAD_S3_QUEUE);
+    }
+
+    @Test
+    void testUploadInDiskStatus_WhenStageIsNotUploadDiskDone_ShouldExecuteElseBlock() {
+        // Configurando o comportamento simulado do RedisMessageService
+        when(redisMessageService.setIfAbsent(anyString())).thenReturn(true);
+
+        // Executando o método
+        ResponseEntity<InfoVideo> response = diskUploadCommunicationController.uploadInDiskStatus(infoVideo);
+
+        // Verificando se o método retornou a resposta esperada
+        assertNotNull(response);
+        assertEquals(200, response.getStatusCodeValue());
+        assertEquals(infoVideo, response.getBody());
+
+        // Verificando se o método foi chamado corretamente
+        verify(redisMessageService, times(1)).setIfAbsent(anyString());
+    }
+
+    @Test
+    void testUploadInDiskStatus_WhenRedisFails_ShouldReturnNotFound() {
+        // Simulando falha ao gravar no Redis
+        when(redisMessageService.setIfAbsent(anyString())).thenReturn(false);
+
+        // Executando o método
+        ResponseEntity<InfoVideo> response = diskUploadCommunicationController.uploadInDiskStatus(infoVideo);
+
+        // Verificando se o método retornou a resposta esperada
+        assertNotNull(response);
+        assertEquals(404, response.getStatusCodeValue());
+        assertNull(response.getBody());
+
+        // Verificando se o método foi chamado corretamente
+        verify(redisMessageService, times(1)).setIfAbsent(anyString());
+    }
 
     @Test
     void uploadInDiskStatus_uploadDiskDoneStage_shouldSetAbsentAndReturnOk() {
