@@ -32,24 +32,24 @@ jobs:
 
       - name: Login to Amazon ECR
         run: |
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.ECR_REPOSITORY_URL }}
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ vars.ECR_REPOSITORY_URL }}
 
       - name: Create ECR repository
         run: |
           aws ecr describe-repositories --repository-names ${{ vars.ECR_REPOSITORY_URL }}${{ vars.IMAGE_REDIS_COMMUNICATION }} --region us-east-1 || \
-          aws ecr create-repository --repository-name ${{ secrets.IMAGE_REDIS_COMMUNICATION }} --region us-east-1 || true
+          aws ecr create-repository --repository-name ${{ vars.IMAGE_REDIS_COMMUNICATION }} --region us-east-1 || true
 
       - name: Create Kubernetes namespace
         run: kubectl create namespace ${{ secrets.NAMESPACE }} || true
 
       - name: Replace image placeholder
-        run: sed -i 's|IMAGE_CORE_PLACEHOLDER|${{ vars.ECR_REPOSITORY_URL }}${{ secrets.IMAGE_REDIS_COMMUNICATION }}:1.0.0|g' .kube/app/app-deployment.yaml
+        run: sed -i 's|IMAGE_CORE_PLACEHOLDER|${{ vars.ECR_REPOSITORY_URL }}${{ vars.IMAGE_REDIS_COMMUNICATION }}:1.0.0|g' .kube/app/app-deployment.yaml
 
       - name: Build Docker image
-        run: docker build -t ${{ vars.ECR_REPOSITORY_URL }}${{ secrets.IMAGE_REDIS_COMMUNICATION }}:1.0.0 .
+        run: docker build -t ${{ vars.ECR_REPOSITORY_URL }}${{ vars.IMAGE_REDIS_COMMUNICATION }}:1.0.0 .
 
       - name: Push Docker image to ECR
-        run: docker push ${{ vars.ECR_REPOSITORY_URL }}${{ secrets.IMAGE_REDIS_COMMUNICATION }}:1.0.0
+        run: docker push ${{ vars.ECR_REPOSITORY_URL }}${{ vars.IMAGE_REDIS_COMMUNICATION }}:1.0.0
 
 
       - name: Apply Kubernetes deployment
