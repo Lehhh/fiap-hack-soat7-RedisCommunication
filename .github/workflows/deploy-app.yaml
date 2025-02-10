@@ -48,10 +48,10 @@ jobs:
       - name: Push Docker image to ECR
         run: docker push ${{ secrets.ECR_REPOSITORY_URL }}/$(echo ${{ secrets.IMAGE_REDIS_COMMUNICATION }}):1.0.0
 
-      - name: Apply Kubernetes config map
+      - name: Apply Kubernetes deployment
         working-directory: .kube/app
         run: kubectl apply -f deployment-app.yaml --namespace ${{ secrets.NAMESPACE }}
 
-      - name: Apply Kubernetes pv
+      - name: Apply Kubernetes service
         working-directory: .kube/app
-        run: kubectl apply -f app-service.yaml --namespace ${{ secrets.NAMESPACE }}
+        run: kubectl apply -f service-app.yaml --namespace ${{ secrets.NAMESPACE }}
