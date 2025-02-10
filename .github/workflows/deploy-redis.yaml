@@ -1,0 +1,57 @@
+name: Build and Deploy to Kubernetes
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - 'releases/**'
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Setup kubectl for EKS
+        run: |
+          aws eks --region us-east-1 update-kubeconfig --name eks-cluster
+
+      - name: Create Kubernetes namespace
+        run: kubectl create namespace ${{ secrets.NAMESPACE }} || true
+
+      - name: Apply Kubernetes config map
+        working-directory: .kube/redis
+        run: kubectl apply -f redis-configmap.yaml --namespace ${{ secrets.NAMESPACE }}
+
+      - name: Apply Kubernetes pv
+        working-directory: .kube/redis
+        run: kubectl apply -f redis-pv.yaml --namespace ${{ secrets.NAMESPACE }}
+
+      - name: Apply Kubernetes pvc
+        working-directory: .kube/redis
+        run: kubectl apply -f redis-pvc.yaml --namespace ${{ secrets.NAMESPACE }}
+
+      - name: Apply Kubernetes deployment
+        working-directory: .kube/redis
+        run: kubectl apply -f redis-deployment.yaml --namespace ${{ secrets.NAMESPACE }}
+
+      - name: Apply Kubernetes service
+        working-directory: .kube/redis
+        run: kubectl apply -f redis-service.yaml --namespace ${{ secrets.NAMESPACE }}
+
+      - name: Apply Kubernetes ingress
+        working-directory: .kube/redis
+        run: kubectl apply -f redis-ingress.yaml --namespace ${{ secrets.NAMESPACE }}
