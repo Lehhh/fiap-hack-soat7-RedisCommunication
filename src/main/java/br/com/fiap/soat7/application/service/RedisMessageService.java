@@ -22,9 +22,13 @@ public class RedisMessageService {
 	private final RedisTemplate<String, Object> redisTemplate;
 
 	public boolean setIfAbsent(String key) {
-		// Tenta configurar o valor na chave, caso não exista
-		Boolean success = redisTemplate.opsForValue().setIfAbsent(key, System.currentTimeMillis());
-		return Boolean.TRUE.equals(success); // Retorna true se a chave foi configurada com sucesso
+		try {
+			Boolean success = redisTemplate.opsForValue().setIfAbsent(key, System.currentTimeMillis());
+			return Boolean.TRUE.equals(success);
+		} catch (Exception e) {
+			log.error("Erro ao definir chave no Redis: {}", key, e);
+			return false;
+		}
 	}
 
 	public List<String> fetchAllKeys(String matches) {
