@@ -43,7 +43,7 @@ jobs:
         run: kubectl create namespace ${{ secrets.NAMESPACE }} || true
 
       - name: Replace image placeholder
-        run: sed -i 's|IMAGE_CORE_PLACEHOLDER|${{ secrets.IMAGE_REDIS_COMMUNICATION }}:1.0.0|g' .kube/app/app-deployment.yaml
+        run: sed -i 's|IMAGE_CORE_PLACEHOLDER|${{ vars.ECR_REPOSITORY_URL }}${{ secrets.IMAGE_REDIS_COMMUNICATION }}:1.0.0|g' .kube/app/app-deployment.yaml
 
       - name: Build Docker image
         run: docker build -t ${{ IMAGE_REDIS_COMMUNICATION }}:1.0.0 .
