@@ -50,7 +50,7 @@ jobs:
 
       - name: Apply Kubernetes service
         working-directory: .kube/redis
-        run: kubectl apply -f redis-service.yaml --namespace $${{ secrets.NAMESPACE }}
+        run: kubectl apply -f redis-service.yaml --namespace ${{ secrets.NAMESPACE }}
 
       - name: Apply Kubernetes ingress
         working-directory: .kube/redis
