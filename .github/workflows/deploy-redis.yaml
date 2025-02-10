@@ -30,7 +30,7 @@ jobs:
           aws eks --region us-east-1 update-kubeconfig --name eks-cluster
 
       - name: Create Kubernetes namespace
-        run: kubectl create namespace ${{ secrets.NAMESPACE }}
+        run: kubectl create namespace ${{ secrets.NAMESPACE }} || true
 
       - name: Apply Kubernetes config map
         working-directory: .kube/redis
@@ -50,7 +50,7 @@ jobs:
 
       - name: Apply Kubernetes service
         working-directory: .kube/redis
-        run: kubectl apply -f redis-service.yaml --namespace $${{ secrets.NAMESPACE }}
+        run: kubectl apply -f redis-service.yaml --namespace ${{ secrets.NAMESPACE }}
 
       - name: Apply Kubernetes ingress
         working-directory: .kube/redis
