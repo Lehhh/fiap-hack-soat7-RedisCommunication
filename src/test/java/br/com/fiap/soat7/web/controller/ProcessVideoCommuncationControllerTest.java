@@ -114,4 +114,22 @@ class ProcessVideoCommuncationControllerTest {
         assertEquals(expectedKeys, response.getBody());
         verify(redisMessageService).fetchOnlyKeysWithOutNextPostion(Stage.PROCESS_VIDEO_QUEUE);
     }
+
+    @Test
+    void fixProcessVideo_shouldDeleteKeysAndSetIfAbsent() {
+        // Arrange
+        InfoVideo infoVideo = mock(InfoVideo.class);
+        when(infoVideo.getVideoId()).thenReturn(2l);
+        when(infoVideo.getVersion()).thenReturn(1);
+        when(infoVideo.redisKeyStatus()).thenReturn("key1");
+
+        // Act
+        ResponseEntity<Map<String, Boolean>> response = processVideoCommuncationController.fixProcessVideo(infoVideo);
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().get("message"));
+        verify(redisMessageService).deleteKeysByPattern("*:2:*:1:PROCESS_VIDEO*");
+        verify(redisMessageService).setIfAbsent("key1");
+    }
 }
