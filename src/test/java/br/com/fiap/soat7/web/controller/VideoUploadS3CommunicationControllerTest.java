@@ -95,5 +95,48 @@ class VideoUploadS3CommunicationControllerTest {
         // Assert
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
     }
+    @Test
+    void fixSendVideo_shouldDeleteKeysAndSetIfAbsent() {
+        // Arrange
+        when(infoVideo.getVideoId()).thenReturn(1l);
+        when(infoVideo.getVersion()).thenReturn(1);
+        when(infoVideo.redisKeyStatus()).thenReturn("key1");
+
+        // Act
+        ResponseEntity<Map<String, Boolean>> response = controller.fixSendVideo(infoVideo);
+
+        // Assert
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().get("message"));
+        verify(redisMessageService).deleteKeysByPattern("*:1:*:1:UPLOAD_S3*");
+        verify(redisMessageService).setIfAbsent("key1");
+    }
+
+    @Test
+    void uploadToS3Status_whenStageIsUploadS3DoneAndSetIfAbsentFails_shouldReturnNotFound() {
+        // Arrange
+        infoVideo.setStage(Stage.UPLOAD_S3_DONE);
+        when(redisMessageService.setIfAbsent(infoVideo.redisKeyStatus())).thenReturn(false);
+
+        // Act
+        ResponseEntity<InfoVideo> response = controller.uploadToS3Status(infoVideo);
+
+        // Assert
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+    }
+
+    @Test
+    void uploadToS3Status_whenStageIsNotUploadS3DoneAndSetIfAbsentFails_shouldReturnNotFound() {
+        // Arrange
+        infoVideo.setStage(Stage.UPLOAD_S3_QUEUE);
+        when(redisMessageService.setIfAbsent(infoVideo.redisKeyStatus())).thenReturn(false);
+
+        // Act
+        ResponseEntity<InfoVideo> response = controller.uploadToS3Status(infoVideo);
+
+        // Assert
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+    }
+
 
 }

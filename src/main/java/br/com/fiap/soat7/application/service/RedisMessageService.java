@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -28,12 +29,15 @@ public class RedisMessageService {
 
 	public List<String> fetchAllKeys(String matches) {
 		List<String> keys = new ArrayList<>();
-		try (RedisConnection redisConnection = redisTemplate.getConnectionFactory().getConnection()) {
+		try (RedisConnection redisConnection = Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection()) {
 			ScanOptions options = ScanOptions.scanOptions().match(matches).count(100).build();
 			Cursor c = redisConnection.scan(options);
 			while (c.hasNext()) {
 				keys.add(new String((byte[]) c.next()));
 			}
+		}
+		catch (Exception e){
+			throw  new RuntimeException("Erro ao buscar chaves no Redis", e);
 		}
 		return keys;
 	}
