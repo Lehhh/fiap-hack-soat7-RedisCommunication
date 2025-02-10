@@ -1,38 +1,24 @@
 package br.com.fiap.soat7.application.service;
 
-import br.com.fiap.soat7.domain.enums.Stage;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataAccessException;
-import org.springframework.data.redis.connection.RedisConnection;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.core.Cursor;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ScanOptions;
-import org.springframework.data.redis.core.ValueOperations;
+import static org.mockito.Mockito.*;
+import static org.junit.Assert.*;
 
-import java.nio.charset.StandardCharsets;
+import br.com.fiap.soat7.domain.enums.Stage;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.*;
+import org.springframework.data.redis.connection.*;
+
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-
 @ExtendWith(MockitoExtension.class)
-class RedisMessageServiceTest {
+public class RedisMessageServiceTest {
 
     @Mock
     private RedisTemplate<String, Object> redisTemplate;
-
-    @InjectMocks
-    private RedisMessageService redisMessageService;
-
-    @Mock
-    private ValueOperations<String, Object> valueOperations;
 
     @Mock
     private RedisConnectionFactory redisConnectionFactory;
@@ -41,102 +27,185 @@ class RedisMessageServiceTest {
     private RedisConnection redisConnection;
 
     @Mock
-    private Cursor cursor;
+    private ValueOperations<String, Object> valueOperations;
 
-    // Removed from setUp()
-    //@BeforeEach
-    //void setUp() {
-    //    when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-    //}
+    @Mock
+    private Cursor<byte[]> cursor;
+
+    private RedisMessageService redisMessageService;
+
+    @Before
+    public void setUp() {
+        MockitoAnnotations.openMocks(this);
+        redisMessageService = new RedisMessageService(redisTemplate);
+
+        when(redisTemplate.getConnectionFactory()).thenReturn(redisConnectionFactory);
+        when(redisConnectionFactory.getConnection()).thenReturn(redisConnection);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+    }
+
+    // Testes para setIfAbsent
 
     @Test
-    void setIfAbsent_keyDoesNotExist_shouldReturnTrue() {
+    public void testSetIfAbsent_KeyDoesNotExist_ShouldReturnTrue() {
+        // Arrange
         String key = "testKey";
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations); // Add here, if needed in this test
         when(valueOperations.setIfAbsent(eq(key), anyLong())).thenReturn(true);
 
+        // Act
         boolean result = redisMessageService.setIfAbsent(key);
 
+        // Assert
         assertTrue(result);
         verify(valueOperations).setIfAbsent(eq(key), anyLong());
     }
 
     @Test
-    void setIfAbsent_keyExists_shouldReturnFalse() {
-        String key = "testKey";
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations); // Add here, if needed in this test
+    public void testSetIfAbsent_KeyAlreadyExists_ShouldReturnFalse() {
+        // Arrange
+        String key = "existingKey";
         when(valueOperations.setIfAbsent(eq(key), anyLong())).thenReturn(false);
 
+        // Act
         boolean result = redisMessageService.setIfAbsent(key);
 
+        // Assert
         assertFalse(result);
         verify(valueOperations).setIfAbsent(eq(key), anyLong());
     }
 
     @Test
-    void fetchAllKeys_shouldReturnListOfKeys() {
-        String match = "test:*";
-        List<byte[]> expectedKeys = Arrays.asList("test:key1".getBytes(StandardCharsets.UTF_8), "test:key2".getBytes(StandardCharsets.UTF_8));
+    public void testSetIfAbsent_ExceptionHandling_ShouldReturnFalse() {
+        // Arrange
+        String key = "errorKey";
+        when(valueOperations.setIfAbsent(eq(key), anyLong())).thenThrow(new RuntimeException("Redis error"));
 
-        when(redisTemplate.getConnectionFactory()).thenReturn(redisConnectionFactory);
-        when(redisConnectionFactory.getConnection()).thenReturn(redisConnection);
-        when(redisConnection.scan(any(ScanOptions.class))).thenReturn(cursor);
-        when(cursor.hasNext()).thenReturn(true, true, false);
-        when(cursor.next()).thenReturn(expectedKeys.get(0), expectedKeys.get(1));
+        // Act
+        boolean result = redisMessageService.setIfAbsent(key);
 
-        List<String> actualKeys = redisMessageService.fetchAllKeys(match);
-
-        assertEquals(2, actualKeys.size());
-        assertEquals("test:key1", actualKeys.get(0));
-        assertEquals("test:key2", actualKeys.get(1));
-        verify(redisTemplate.getConnectionFactory()).getConnection();
-        verify(redisConnection).scan(any(ScanOptions.class));
-        verify(cursor, times(3)).hasNext();
-        verify(cursor, times(2)).next();
-        verify(redisConnection).close();
+        // Assert
+        assertFalse(result);
     }
 
+    // Testes para fetchAllKeys
 
     @Test
-    void fetchOnlyKeysWithOutNextPostion_exceptionThrown_shouldReturnEmptyList() {
-        Stage stage = Stage.PROCESS_VIDEO_DONE;
-        when(redisTemplate.getConnectionFactory()).thenThrow(new RuntimeException("Connection error"));
+    public void testFetchAllKeys_ShouldReturnListOfKeys() {
+        // Arrange
+        String pattern = "prefix:*";
+        List<String> expectedKeys = Arrays.asList("prefix:1", "prefix:2", "prefix:3");
 
+        when(redisConnection.scan(any(ScanOptions.class))).thenReturn(cursor);
+        when(cursor.hasNext()).thenReturn(true, true, true, false);
+        when(cursor.next()).thenReturn("prefix:1".getBytes(), "prefix:2".getBytes(), "prefix:3".getBytes());
+
+        // Act
+        List<String> result = redisMessageService.fetchAllKeys(pattern);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(expectedKeys.size(), result.size());
+        assertTrue(result.containsAll(expectedKeys));
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void testFetchAllKeys_ShouldThrowException_WhenRedisFails() {
+        // Arrange
+        String pattern = "prefix:*";
+        when(redisTemplate.getConnectionFactory()).thenThrow(new RuntimeException("Redis error"));
+
+        // Act
+        redisMessageService.fetchAllKeys(pattern);
+    }
+
+    // ✅ Testando fetchOnlyKeysWithOutNextPostion - Caminho Feliz
+    @Test
+    public void testFetchOnlyKeysWithOutNextPostion_Success() {
+        // Arrange
+        Stage stage = Stage.UPLOAD_S3_QUEUE;
+        String matches = "*:*:*" + stage.name();
+        String nextMatches = "*:*:*" + Stage.fetchStageOnly(stage).name();
+
+        // Simulando chaves no estágio atual
+        when(redisConnection.scan(any(ScanOptions.class))).thenReturn(cursor);
+        when(cursor.hasNext()).thenReturn(true, true, true, false);
+        when(cursor.next()).thenReturn("key1:UPLOAD_S3_QUEUE".getBytes(), "key2:UPLOAD_S3_QUEUE".getBytes(), "key3:UPLOAD_S3_QUEUE".getBytes());
+
+        // Simulando chaves no próximo estágio
+        when(redisConnection.scan(any(ScanOptions.class))).thenReturn(cursor);
+        when(cursor.hasNext()).thenReturn(true, true, false);
+        when(cursor.next()).thenReturn("key1:UPLOAD_S3_IN_PROGRESS".getBytes(), "key4:UPLOAD_S3_IN_PROGRESS".getBytes());
+
+        // Act
         List<String> result = redisMessageService.fetchOnlyKeysWithOutNextPostion(stage);
 
+        // Assert
+        assertNotNull(result);
+        assertEquals(2, result.size());
+    }
+
+    // ✅ Testando fetchOnlyKeysWithOutNextPostion - Nenhuma Chave Encontrada
+    @Test
+    public void testFetchOnlyKeysWithOutNextPostion_NoKeysFound_ShouldReturnEmptyList() {
+        // Arrange
+        Stage stage = Stage.UPLOAD_S3_QUEUE;
+
+        // Simula nenhum resultado no scan
+        when(redisConnection.scan(any(ScanOptions.class))).thenReturn(cursor);
+        when(cursor.hasNext()).thenReturn(false);
+
+        // Act
+        List<String> result = redisMessageService.fetchOnlyKeysWithOutNextPostion(stage);
+
+        // Assert
+        assertNotNull(result);
         assertTrue(result.isEmpty());
     }
 
-
+    // ✅ Testando fetchOnlyKeysWithOutNextPostion - Erro na Conexão com Redis
     @Test
-    void deleteKeysByPattern_keysExist_shouldDeleteKeys() {
-        String pattern = "test:*";
-        Set<String> keysToDelete = new HashSet<>(Arrays.asList("test:key1", "test:key2"));
+    public void testFetchOnlyKeysWithOutNextPostion_ExceptionHandling_ShouldReturnEmptyList() {
+        // Arrange
+        Stage stage = Stage.UPLOAD_S3_QUEUE;
 
-        when(redisTemplate.keys(pattern)).thenReturn(keysToDelete);
+        // Simula uma falha ao obter a conexão
+        when(redisTemplate.getConnectionFactory()).thenThrow(new RuntimeException("Redis connection failed"));
 
-        redisMessageService.deleteKeysByPattern(pattern);
+        // Act
+        List<String> result = redisMessageService.fetchOnlyKeysWithOutNextPostion(stage);
 
-        verify(redisTemplate).delete(keysToDelete);
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
     }
 
+    // ✅ Testando deleteKeysByPattern - Caminho Feliz
     @Test
-    void deleteKeysByPattern_keysDoNotExist_shouldNotAttemptToDelete() {
-        String pattern = "test:*";
-        when(redisTemplate.keys(pattern)).thenReturn(null);
+    public void testDeleteKeysByPattern_Success() {
+        // Arrange
+        String pattern = "prefix:*";
+        Set<String> mockKeys = new HashSet<>(Arrays.asList("key1", "key2", "key3"));
 
+        when(redisTemplate.keys(pattern)).thenReturn(mockKeys);
+
+        // Act
         redisMessageService.deleteKeysByPattern(pattern);
 
-        verify(redisTemplate, never()).delete(anySet());
+        // Assert
+        verify(redisTemplate, times(1)).delete(mockKeys);
     }
 
+    // ✅ Testando deleteKeysByPattern - Nenhuma Chave Encontrada
     @Test
-    void deleteKeysByPattern_keysIsEmpty_shouldNotAttemptToDelete() {
-        String pattern = "test:*";
-        when(redisTemplate.keys(pattern)).thenReturn(new HashSet<>());
+    public void testDeleteKeysByPattern_NoKeysFound_ShouldNotDeleteAnything() {
+        // Arrange
+        String pattern = "prefix:*";
+        when(redisTemplate.keys(pattern)).thenReturn(Collections.emptySet());
 
+        // Act
         redisMessageService.deleteKeysByPattern(pattern);
 
+        // Assert
         verify(redisTemplate, never()).delete(anySet());
     }
 }

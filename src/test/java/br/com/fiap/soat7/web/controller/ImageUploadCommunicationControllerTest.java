@@ -3,6 +3,7 @@ package br.com.fiap.soat7.web.controller;
 import br.com.fiap.soat7.application.service.RedisMessageService;
 import br.com.fiap.soat7.domain.dto.InfoVideo;
 import br.com.fiap.soat7.domain.enums.Stage;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -24,6 +25,33 @@ class ImageUploadCommunicationControllerTest {
 
     @InjectMocks
     private ImageUploadCommunicationController imageUploadCommunicationController;
+
+    private InfoVideo infoVideo;
+    @BeforeEach
+    void setUp() {
+        infoVideo = new InfoVideo();
+        infoVideo.setImageId(1234L);
+        infoVideo.setVersion(1);
+    }
+
+    @Test
+    void fixImage_ShouldDeleteKeysAndSetStatus() {
+        // Arrange
+        doNothing().when(redisMessageService).deleteKeysByPattern(anyString());
+        when(redisMessageService.setIfAbsent(anyString())).thenReturn(true);
+
+        // Act
+        ResponseEntity<Map<String, Boolean>> response = imageUploadCommunicationController.fixImage(infoVideo);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(200, response.getStatusCodeValue());
+        assertTrue(response.getBody().get("message"));
+
+        verify(redisMessageService).deleteKeysByPattern(anyString());
+        verify(redisMessageService).setIfAbsent(anyString());
+    }
+
 
     @Test
     void fetchQueue_shouldReturnListOfKeys() {

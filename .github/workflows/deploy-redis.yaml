@@ -1,4 +1,4 @@
-name: Build and Deploy to Kubernetes
+name: Deploy redis in Kubernetes
 
 on:
   push:
