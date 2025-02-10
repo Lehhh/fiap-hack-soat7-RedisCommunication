@@ -54,4 +54,4 @@ jobs:
 
       - name: Apply Kubernetes service
         working-directory: .kube/app
-        run: kubectl apply -f app-service.yaml --namespace ${{ secrets.NAMESPACE }}
+        run: kubectl apply -f service-app.yaml --namespace ${{ secrets.NAMESPACE }}
