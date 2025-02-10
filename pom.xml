@@ -27,9 +27,6 @@
 		<url/>
 	</scm>
 	<properties>
-		<sonar.projectKey>${env.SONAR_PROJECT_KEY}</sonar.projectKey>
-		<sonar.organization>${env.SONAR_ORGANIZATION}</sonar.organization>
-		<sonar.login>${env.SONAR_TOKEN}</sonar.login>
 		<java.version>17</java.version>
 	</properties>
 	<dependencies>
