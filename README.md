@@ -1,66 +1,47 @@
-Documentação
+# Projeto Redis Communication
 
-Objetivo:
+## Descrição
+Este projeto é uma aplicação Spring Boot que se comunica com um servidor Redis. Ele utiliza Kubernetes para orquestração de contêineres.
 
-Essa app tem como objetivo realizar o middleware de conexão com o redis, sendo assim uma das 
-validações necessárias para a app continuar de é a comunicação com o Redis.
+## Pré-requisitos
+- Java 11+
+- Maven
+- Docker
+- Kubernetes
 
-##Subida do Redis
+## Configuração
 
-Temos atualmente tres formas de subir o redis, localmente atraves do comando 
+### Variáveis de Ambiente
+As seguintes variáveis de ambiente precisam ser configuradas para a aplicação funcionar corretamente:
 
-Docker local:
-docker run --name redis -d -p 6379:6379 redis redis-server --save 60 1 --loglevel warning
+- `REDIS_HOST`: O host do servidor Redis. No ambiente Kubernetes, isso é configurado como `redis-service`.
+- `REDIS_PORT`: A porta do servidor Redis. No ambiente Kubernetes, isso é configurado como `6379`.
 
-Rancher Local:
-acesse na raiz do projeto o .kube
-e execute 
-kubectl apply -f redis-configmap.yaml --namespace=hackaton-soat7-2025
-kubectl apply -f redis-deployment.yaml --namespace=hackaton-soat7-2025
-kubectl apply -f redis-ingress.yml --namespace=hackaton-soat7-2025
-kubectl apply -f redis-service.yaml --namespace=hackaton-soat7-2025
+### Arquivos de Configuração
+- `src/main/resources/application.yml`: Configurações do Spring Boot.
+- `.kube/redis/redis-configmap.yaml`: Configurações do Redis.
+- `.kube/redis/redis-ingress.yml`: Configurações de Ingress do Redis.
+- `.kube/redis-communication/deployment-app.yaml`: Configurações de Deployment da aplicação.
 
-AWS utilizando o ElastiCache:
+## Como Executar
 
-https://github.com/Lehhh/fiap-hack-soat7-terraform-redis.git
+### Localmente
+1. Compile o projeto:
+    ```sh
+    mvn clean install
+    ```
+2. Execute a aplicação:
+    ```sh
+    java -jar target/redis-communication-1.0.0.jar
+    ```
 
-Acesse na raiz do projeto env/prod e execute
-terraform plan
-terraform apply
+### No Kubernetes
+1. Crie os ConfigMaps e Deployments:
+    ```sh
+    kubectl apply -f .kube/redis/redis-configmap.yaml
+    kubectl apply -f .kube/redis-communication/deployment-app.yaml
+    kubectl apply -f .kube/redis/redis-ingress.yml
+    ```
 
-#Subida da App
-
-##Gerar a imagem localmente
-
-docker build -t redis-communication:1.0.0 .
-
-## Executar o comando para rodar no docker local
-
-docker run --name redis-communication -p 8080:8080 -e REDIS_HOST={IP_MAQUINA_LOCAL} -e REDIS_PORT=30079 redis-communication:1.0.0
-
-Como ver o ip da sua maquina local no mac
-
-ifconfig | grep "inet " | grep -v 127.0.0.1 | grep 'inet' | awk '{print $2}'
-
-no linux:
-hostname -I
-
-## Subir a App no kubernetes
-Acessar na raiz a pasta .kube/redis-communicaiton
-
-kubectl apply -f service-app.yaml --namespace=hackaton-soat7-2025
-kubectl apply -f deployment-app.yaml --namespace=hackaton-soat7-2025
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+## Licença
+Este projeto está licenciado sob a Licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
